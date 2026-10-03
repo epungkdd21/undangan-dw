@@ -1,17 +1,12 @@
 <?php
 session_start();
 
-$dashboardEmail = getenv('UNDANGAN_DASHBOARD_EMAIL');
-$dashboardPassword = getenv('UNDANGAN_DASHBOARD_PASSWORD');
-$dataPath = __DIR__ . '/invitees-store.php';
-$settingsPath = __DIR__ . '/fonnte-settings.php';
-$historyPath = __DIR__ . '/broadcast-history.php';
-$invitees = require $dataPath;
-$invitees = is_array($invitees) ? $invitees : [];
-$settings = is_file($settingsPath) ? require $settingsPath : [];
-$settings = is_array($settings) ? $settings : [];
-$history = is_file($historyPath) ? require $historyPath : [];
-$history = is_array($history) ? $history : [];
+require_once __DIR__ . '/database.php';
+$database = appDatabase();
+$invitees = $database->query('SELECT id, name, phone FROM invitees ORDER BY rowid')->fetchAll();
+$settings = $database->query('SELECT setting_key, setting_value FROM app_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
+$history = $database->query('SELECT time, targets, sent, failed, skipped FROM broadcast_history ORDER BY id')->fetchAll();
+$dashboardUserCount = (int) $database->query('SELECT COUNT(*) FROM dashboard_users')->fetchColumn();
 $messageTemplate = $settings['message'] ?? 'Assalamu\'alaikum. Yth. {nama}, kami mengundang Anda pada acara DWIPANTARA 2026. Silakan buka undangan: {link}';
 $savedFonnteToken = $settings['token'] ?? '';
 $environmentFonnteToken = getenv('FONNTE_TOKEN');
@@ -35,21 +30,27 @@ if ($status === 'broadcasted') {
   $notice = "Broadcast selesai: $sent terkirim, $failed gagal, $skipped dilewati.";
 }
 
-function saveFonnteSettings(string $path, array $settings): bool
-{
-  return file_put_contents($path, "<?php\nreturn " . var_export($settings, true) . ";\n", LOCK_EX) !== false;
-}
-
-if (is_string($dashboardEmail) && $dashboardEmail !== '' && is_string($dashboardPassword) && $dashboardPassword !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $csrfToken = $_POST['csrf'] ?? '';
   if (!is_string($csrfToken) || !hash_equals($_SESSION['csrf'] ?? '', $csrfToken)) {
     $error = 'Sesi formulir tidak valid. Muat ulang halaman dan coba kembali.';
   } elseif (($_POST['action'] ?? '') === 'login') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
-    if (is_string($email) && is_string($password) && hash_equals($dashboardEmail, $email) && hash_equals($dashboardPassword, $password)) {
+    $findUser = $database->prepare('SELECT id, password_hash FROM dashboard_users WHERE email = :email');
+    $findUser->execute([':email' => is_string($email) ? $email : '']);
+    $dashboardUser = $findUser->fetch();
+    if (is_string($email) && is_string($password) && $dashboardUser && password_verify($password, $dashboardUser['password_hash'])) {
       session_regenerate_id(true);
       $_SESSION['dashboard_authenticated'] = true;
+      $_SESSION['dashboard_user_id'] = (int) $dashboardUser['id'];
+      if (password_needs_rehash($dashboardUser['password_hash'], PASSWORD_DEFAULT)) {
+        $updateHash = $database->prepare('UPDATE dashboard_users SET password_hash = :password_hash WHERE id = :id');
+        $updateHash->execute([
+          ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+          ':id' => $dashboardUser['id'],
+        ]);
+      }
       header('Location: dashboard.php');
       exit;
     }
@@ -58,28 +59,33 @@ if (is_string($dashboardEmail) && $dashboardEmail !== '' && is_string($dashboard
     $action = $_POST['action'] ?? '';
     $name = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : '');
 
-    if (in_array($action, ['add', 'update'], true) && ($name === '' || strlen($name) > 240)) {
+    if (in_array($action, ['add', 'update'], true) && ($name === '' || strlen($name) > 120)) {
       header('Location: dashboard.php?status=invalid');
       exit;
     }
 
     if ($action === 'add') {
       $phone = trim(is_string($_POST['phone'] ?? null) ? $_POST['phone'] : '');
-      $invitees[] = ['id' => bin2hex(random_bytes(8)), 'name' => $name, 'phone' => $phone];
+      $insertInvitee = $database->prepare('INSERT INTO invitees (id, name, phone) VALUES (:id, :name, :phone)');
+      $insertInvitee->execute([':id' => bin2hex(random_bytes(8)), ':name' => $name, ':phone' => $phone]);
+      header('Location: dashboard.php?status=saved#kontak');
+      exit;
     } elseif ($action === 'update' || $action === 'delete') {
       $id = $_POST['id'] ?? '';
       if (is_string($id)) {
-        foreach ($invitees as $index => $invitee) {
-          if (isset($invitee['id']) && hash_equals($invitee['id'], $id)) {
-            if ($action === 'update') {
-              $invitees[$index]['name'] = $name;
-              $invitees[$index]['phone'] = trim(is_string($_POST['phone'] ?? null) ? $_POST['phone'] : '');
-            } else {
-              array_splice($invitees, $index, 1);
-            }
-            break;
-          }
+        if ($action === 'update') {
+          $updateInvitee = $database->prepare('UPDATE invitees SET name = :name, phone = :phone WHERE id = :id');
+          $updateInvitee->execute([
+            ':name' => $name,
+            ':phone' => trim(is_string($_POST['phone'] ?? null) ? $_POST['phone'] : ''),
+            ':id' => $id,
+          ]);
+        } else {
+          $deleteInvitee = $database->prepare('DELETE FROM invitees WHERE id = :id');
+          $deleteInvitee->execute([':id' => $id]);
         }
+        header('Location: dashboard.php?status=' . ($action === 'delete' ? 'deleted' : 'saved') . '#kontak');
+        exit;
       }
     } elseif ($action === 'logout') {
       $_SESSION = [];
@@ -93,33 +99,33 @@ if (is_string($dashboardEmail) && $dashboardEmail !== '' && is_string($dashboard
       } else {
         $settings['message'] = $messageTemplate;
         $submittedToken = trim(is_string($_POST['fonnte_token'] ?? null) ? $_POST['fonnte_token'] : '');
+        $settingsSaved = saveAppSetting($database, 'message', $messageTemplate);
         if (isset($_POST['clear_fonnte_token'])) {
           $settings['token'] = '';
+          $settingsSaved = saveAppSetting($database, 'token', '') && $settingsSaved;
         } elseif ($submittedToken !== '') {
           $settings['token'] = $submittedToken;
+          $settingsSaved = saveAppSetting($database, 'token', $submittedToken) && $settingsSaved;
         }
+        $savedFonnteToken = $settings['token'] ?? '';
+        $environmentFonnteToken = getenv('FONNTE_TOKEN');
+        $fonnteToken = is_string($environmentFonnteToken) && $environmentFonnteToken !== ''
+          ? $environmentFonnteToken
+          : $savedFonnteToken;
 
-        if (!saveFonnteSettings($settingsPath, $settings)) {
-          $error = 'Pengaturan tidak dapat disimpan. Periksa izin tulis folder aplikasi.';
+        if (!$settingsSaved) {
+          $error = 'Pengaturan tidak dapat disimpan. Periksa izin tulis database SQLite.';
         } elseif ($action === 'save-settings') {
-          header('Location: dashboard.php?status=settings-saved');
+          header('Location: dashboard.php?status=settings-saved#settings');
           exit;
-        } elseif ($fonnteToken === '' && $submittedToken === '') {
+        } elseif ($fonnteToken === '') {
           $error = 'Masukkan token Fonnte terlebih dahulu.';
         } else {
-          if ($submittedToken !== '' && !isset($_POST['clear_fonnte_token'])) {
-            $fonnteToken = $submittedToken;
-          } elseif (isset($_POST['clear_fonnte_token'])) {
-            $fonnteToken = '';
-          }
-
-          if ($fonnteToken === '') {
-            $error = 'Token Fonnte belum dikonfigurasi.';
-          } else {
+          if ($fonnteToken !== '') {
             $selectedIds = $_POST['selected'] ?? [];
             $selectedIds = is_array($selectedIds) ? array_filter($selectedIds, 'is_string') : [];
             if ($selectedIds === []) {
-              header('Location: dashboard.php?status=no-selection');
+              header('Location: dashboard.php?status=no-selection#broadcast');
               exit;
             }
             $sentCount = 0;
@@ -169,33 +175,22 @@ if (is_string($dashboardEmail) && $dashboardEmail !== '' && is_string($dashboard
               curl_close($request);
             }
 
-            $history[] = [
-              'time' => date('Y-m-d H:i:s'),
-              'targets' => count($selectedIds),
-              'sent' => $sentCount,
-              'failed' => $failedCount,
-              'skipped' => $skippedCount,
-            ];
-            file_put_contents($historyPath, "<?php\nreturn " . var_export(array_values($history), true) . ";\n", LOCK_EX);
+            $insertHistory = $database->prepare(
+              'INSERT INTO broadcast_history (time, targets, sent, failed, skipped)
+               VALUES (:time, :targets, :sent, :failed, :skipped)'
+            );
+            $insertHistory->execute([
+              ':time' => date('Y-m-d H:i:s'),
+              ':targets' => count($selectedIds),
+              ':sent' => $sentCount,
+              ':failed' => $failedCount,
+              ':skipped' => $skippedCount,
+            ]);
 
-            header('Location: dashboard.php?status=broadcasted&sent=' . $sentCount . '&failed=' . $failedCount . '&skipped=' . $skippedCount);
+            header('Location: dashboard.php?status=broadcasted&sent=' . $sentCount . '&failed=' . $failedCount . '&skipped=' . $skippedCount . '#histori');
             exit;
           }
         }
-      }
-    }
-
-    if (in_array($action, ['add', 'update', 'delete'], true)) {
-      $stored = file_put_contents(
-        $dataPath,
-        "<?php\nreturn " . var_export(array_values($invitees), true) . ";\n",
-        LOCK_EX
-      );
-      if ($stored === false) {
-        $error = 'Data tidak dapat disimpan. Periksa izin tulis folder aplikasi.';
-      } else {
-        header('Location: dashboard.php?status=' . ($action === 'delete' ? 'deleted' : 'saved'));
-        exit;
       }
     }
   }
@@ -229,11 +224,11 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
   </header>
 
   <main class="dashboard-main">
-    <?php if (!is_string($dashboardEmail) || $dashboardEmail === '' || !is_string($dashboardPassword) || $dashboardPassword === ''): ?>
+    <?php if ($dashboardUserCount === 0): ?>
       <section class="dashboard-message">
         <p class="dashboard-kicker">PENGATURAN DIPERLUKAN</p>
         <h1>Dashboard belum diaktifkan</h1>
-        <p>Atur environment variable <code>UNDANGAN_DASHBOARD_EMAIL</code> dan <code>UNDANGAN_DASHBOARD_PASSWORD</code> di hosting, lalu muat ulang halaman ini.</p>
+        <p>Atur environment variable <code>UNDANGAN_DASHBOARD_EMAIL</code> dan <code>UNDANGAN_DASHBOARD_PASSWORD</code> untuk membuat akun admin pertama, lalu muat ulang halaman ini.</p>
       </section>
     <?php elseif (!$authenticated): ?>
       <section class="dashboard-message login-panel">

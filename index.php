@@ -1,15 +1,13 @@
 <?php
 $inviteeName = '';
 $inviteeId = $_GET['to'] ?? '';
-$invitees = require __DIR__ . '/invitees-store.php';
+require_once __DIR__ . '/database.php';
+$database = appDatabase();
 
-if (is_string($inviteeId)) {
-  foreach ($invitees as $invitee) {
-    if (isset($invitee['id']) && hash_equals($invitee['id'], $inviteeId)) {
-      $inviteeName = $invitee['name'];
-      break;
-    }
-  }
+if (is_string($inviteeId) && $inviteeId !== '') {
+  $findInvitee = $database->prepare('SELECT name FROM invitees WHERE id = :id');
+  $findInvitee->execute([':id' => $inviteeId]);
+  $inviteeName = (string) ($findInvitee->fetchColumn() ?: '');
 }
 
 $escapedInviteeName = htmlspecialchars($inviteeName, ENT_QUOTES, 'UTF-8');
