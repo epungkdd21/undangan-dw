@@ -5,10 +5,13 @@ $dashboardEmail = getenv('UNDANGAN_DASHBOARD_EMAIL');
 $dashboardPassword = getenv('UNDANGAN_DASHBOARD_PASSWORD');
 $dataPath = __DIR__ . '/invitees-store.php';
 $settingsPath = __DIR__ . '/fonnte-settings.php';
+$historyPath = __DIR__ . '/broadcast-history.php';
 $invitees = require $dataPath;
 $invitees = is_array($invitees) ? $invitees : [];
 $settings = is_file($settingsPath) ? require $settingsPath : [];
 $settings = is_array($settings) ? $settings : [];
+$history = is_file($historyPath) ? require $historyPath : [];
+$history = is_array($history) ? $history : [];
 $messageTemplate = $settings['message'] ?? 'Assalamu\'alaikum. Yth. {nama}, kami mengundang Anda pada acara DWIPANTARA 2026. Silakan buka undangan: {link}';
 $savedFonnteToken = $settings['token'] ?? '';
 $environmentFonnteToken = getenv('FONNTE_TOKEN');
@@ -166,6 +169,15 @@ if (is_string($dashboardEmail) && $dashboardEmail !== '' && is_string($dashboard
               curl_close($request);
             }
 
+            $history[] = [
+              'time' => date('Y-m-d H:i:s'),
+              'targets' => count($selectedIds),
+              'sent' => $sentCount,
+              'failed' => $failedCount,
+              'skipped' => $skippedCount,
+            ];
+            file_put_contents($historyPath, "<?php\nreturn " . var_export(array_values($history), true) . ";\n", LOCK_EX);
+
             header('Location: dashboard.php?status=broadcasted&sent=' . $sentCount . '&failed=' . $failedCount . '&skipped=' . $skippedCount);
             exit;
           }
@@ -205,7 +217,9 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
 </head>
 <body class="dashboard-body">
   <header class="dashboard-header">
-    <a class="dashboard-brand" href="index.php">DWIPANTARA <span>2026</span></a>
+    <a class="dashboard-brand" href="index.php" aria-label="DWIPANTARA 2026">
+      <img src="assets/image.png" alt="DWIPANTARA X Kyai Amin">
+    </a>
     <?php if ($authenticated): ?>
       <form method="post" class="logout-form">
         <input type="hidden" name="csrf" value="<?= $csrf ?>">
@@ -249,80 +263,262 @@ $escape = static fn($value) => htmlspecialchars((string) $value, ENT_QUOTES, 'UT
       <?php if ($notice !== ''): ?><p class="dashboard-notice"><?= $escape($notice) ?></p><?php endif; ?>
       <?php if ($error !== ''): ?><p class="form-error"><?= $escape($error) ?></p><?php endif; ?>
 
-      <form method="post" class="add-guest-form">
-        <input type="hidden" name="csrf" value="<?= $csrf ?>">
-        <input type="hidden" name="action" value="add">
-        <label for="new-name">Tambah penerima undangan</label>
-        <div class="add-guest-controls">
-          <input id="new-name" name="name" type="text" maxlength="120" placeholder="Contoh: Bapak Ahmad dan keluarga" required>
-          <input id="new-phone" name="phone" type="tel" placeholder="WhatsApp, contoh: 62812...">
-          <button type="submit">Tambah tamu</button>
-        </div>
-      </form>
-
-      <section class="broadcast-panel">
-        <div class="broadcast-heading">
-          <div>
-            <p class="dashboard-kicker">WHATSAPP</p>
-            <h2>Broadcast undangan</h2>
-          </div>
-          <span class="fonnte-status <?= $fonnteToken !== '' ? 'is-configured' : '' ?>">
-            <?= $fonnteToken !== '' ? 'Fonnte terhubung' : 'Token belum diatur' ?>
-          </span>
-        </div>
-        <form method="post" id="broadcast-form" class="broadcast-form">
-          <input type="hidden" name="csrf" value="<?= $csrf ?>">
-          <label for="message-template">Isi pesan</label>
-          <textarea id="message-template" name="message" rows="4" maxlength="8000" required><?= $escape($messageTemplate) ?></textarea>
-          <p class="field-hint">Gunakan <code>{nama}</code> untuk nama penerima dan <code>{link}</code> untuk tautan personal undangan.</p>
-          <label for="fonnte-token">Token API Fonnte</label>
-          <input id="fonnte-token" name="fonnte_token" type="password" autocomplete="new-password" placeholder="<?= $fonnteToken !== '' ? 'Token tersimpan; isi hanya untuk mengganti' : 'Tempel token API Fonnte' ?>">
-          <?php if ($savedFonnteToken !== ''): ?>
-            <label class="clear-token"><input type="checkbox" name="clear_fonnte_token" value="1"> Hapus token tersimpan</label>
-          <?php endif; ?>
-          <div class="broadcast-actions">
-            <button type="submit" name="action" value="save-settings" class="secondary-button">Simpan pengaturan</button>
-            <button type="submit" name="action" value="broadcast" class="primary-button" <?= $fonnteToken === '' ? 'disabled' : '' ?>>Kirim ke tamu terpilih</button>
-          </div>
-        </form>
+      <section class="dashboard-overview" aria-label="Ringkasan dashboard">
+        <article class="stat-card">
+          <span class="stat-label">Kontak</span>
+          <strong><?= count($invitees) ?></strong>
+          <small>Total tamu</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Broadcast</span>
+          <strong><?= array_sum(array_map(fn($entry) => (int) ($entry['sent'] ?? 0), $history)) ?></strong>
+          <small>Pesan terkirim</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Histori</span>
+          <strong><?= count($history) ?></strong>
+          <small>Riwayat pengiriman</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Status</span>
+          <strong><?= $fonnteToken !== '' ? 'Aktif' : 'Kosong' ?></strong>
+          <small>API Fonnte</small>
+        </article>
       </section>
 
-      <section class="guest-list" aria-label="Daftar tamu undangan">
-        <?php if ($invitees === []): ?>
-          <p class="empty-guests">Belum ada nama tamu. Tambahkan nama pertama di atas.</p>
-        <?php else: ?>
-          <label class="select-all"><input type="checkbox" id="select-all"> Pilih semua tamu</label>
-          <?php foreach ($invitees as $invitee):
-            $id = (string) ($invitee['id'] ?? '');
-            $sharePath = 'index.php?to=' . rawurlencode($id);
-          ?>
-            <article class="guest-row">
-              <label class="guest-select">
-                <input type="checkbox" name="selected[]" value="<?= $escape($id) ?>" form="broadcast-form">
-                <span class="visually-hidden">Pilih <?= $escape($invitee['name'] ?? 'tamu') ?></span>
-              </label>
-              <form method="post" class="edit-guest-form">
-                <input type="hidden" name="csrf" value="<?= $csrf ?>">
-                <input type="hidden" name="action" value="update">
-                <input type="hidden" name="id" value="<?= $escape($id) ?>">
-                <label class="visually-hidden" for="guest-<?= $escape($id) ?>">Nama tamu</label>
-                <input id="guest-<?= $escape($id) ?>" name="name" type="text" maxlength="120" value="<?= $escape($invitee['name'] ?? '') ?>" required>
-                <label class="visually-hidden" for="phone-<?= $escape($id) ?>">Nomor WhatsApp</label>
-                <input id="phone-<?= $escape($id) ?>" name="phone" type="tel" value="<?= $escape($invitee['phone'] ?? '') ?>" placeholder="62812...">
-                <button type="submit" class="save-guest">Simpan</button>
-              </form>
-              <a class="guest-link" href="<?= $escape($sharePath) ?>" target="_blank" rel="noopener"><?= $escape($sharePath) ?></a>
-              <form method="post" class="delete-guest-form" onsubmit="return confirm('Hapus nama tamu ini?')">
-                <input type="hidden" name="csrf" value="<?= $csrf ?>">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="id" value="<?= $escape($id) ?>">
-                <button type="submit" aria-label="Hapus <?= $escape($invitee['name'] ?? 'tamu') ?>">Hapus</button>
-              </form>
-            </article>
-          <?php endforeach; ?>
-        <?php endif; ?>
-      </section>
+      <nav class="section-menu" aria-label="Menu dashboard">
+        <a href="#kontak" class="active">Kontak</a>
+        <a href="#broadcast">Broadcast</a>
+        <a href="#histori">Histori</a>
+        <a href="#settings">Settingan</a>
+      </nav>
+
+      <div class="dashboard-shell">
+        <div class="dashboard-content">
+          <section id="kontak" class="panel-section">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">DATA KONTAK</p>
+                <h2>Kelola daftar tamu</h2>
+              </div>
+            </div>
+
+            <form method="post" class="add-guest-form">
+              <input type="hidden" name="csrf" value="<?= $csrf ?>">
+              <input type="hidden" name="action" value="add">
+              <label for="new-name">Tambah penerima undangan</label>
+              <div class="add-guest-controls">
+                <input id="new-name" name="name" type="text" maxlength="120" placeholder="Contoh: Bapak Ahmad dan keluarga" required>
+                <input id="new-phone" name="phone" type="tel" placeholder="WhatsApp, contoh: 62812...">
+                <button type="submit">Tambah tamu</button>
+              </div>
+            </form>
+
+            <section class="guest-list" aria-label="Daftar tamu undangan">
+              <?php if ($invitees === []): ?>
+                <p class="empty-guests">Belum ada nama tamu. Tambahkan nama pertama di atas.</p>
+              <?php else: ?>
+                <div class="table-toolbar">
+                  <label class="select-all"><input type="checkbox" id="select-all"> Pilih semua tamu</label>
+                </div>
+                <?php foreach ($invitees as $invitee):
+                  $id = (string) ($invitee['id'] ?? '');
+                  $sharePath = 'index.php?to=' . rawurlencode($id);
+                ?>
+                  <article class="guest-row">
+                    <label class="guest-select">
+                      <input type="checkbox" name="selected[]" value="<?= $escape($id) ?>" form="broadcast-form">
+                      <span class="visually-hidden">Pilih <?= $escape($invitee['name'] ?? 'tamu') ?></span>
+                    </label>
+                    <div class="guest-main">
+                      <form method="post" class="edit-guest-form">
+                        <input type="hidden" name="csrf" value="<?= $csrf ?>">
+                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="id" value="<?= $escape($id) ?>">
+                        <label class="visually-hidden" for="guest-<?= $escape($id) ?>">Nama tamu</label>
+                        <input id="guest-<?= $escape($id) ?>" name="name" type="text" maxlength="120" value="<?= $escape($invitee['name'] ?? '') ?>" required>
+                        <label class="visually-hidden" for="phone-<?= $escape($id) ?>">Nomor WhatsApp</label>
+                        <input id="phone-<?= $escape($id) ?>" name="phone" type="tel" value="<?= $escape($invitee['phone'] ?? '') ?>" placeholder="62812...">
+                        <button type="submit" class="save-guest">Simpan</button>
+                      </form>
+                    </div>
+                    <a class="guest-link" href="<?= $escape($sharePath) ?>" target="_blank" rel="noopener"><?= $escape($sharePath) ?></a>
+                    <form method="post" class="delete-guest-form" onsubmit="return confirm('Hapus nama tamu ini?')">
+                      <input type="hidden" name="csrf" value="<?= $csrf ?>">
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="id" value="<?= $escape($id) ?>">
+                      <button type="submit" aria-label="Hapus <?= $escape($invitee['name'] ?? 'tamu') ?>">Hapus</button>
+                    </form>
+                  </article>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </section>
+          </section>
+
+          <section id="broadcast" class="panel-section">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">BROADCAST</p>
+                <h2>Kirim undangan ke WhatsApp</h2>
+              </div>
+              <span class="fonnte-status <?= $fonnteToken !== '' ? 'is-configured' : '' ?>">
+                <?= $fonnteToken !== '' ? 'Fonnte terhubung' : 'Token belum diatur' ?>
+              </span>
+            </div>
+
+            <form method="post" id="broadcast-form" class="broadcast-form">
+              <input type="hidden" name="csrf" value="<?= $csrf ?>">
+              <input type="hidden" name="action" value="broadcast">
+              <label for="message-template">Isi pesan</label>
+              <textarea id="message-template" name="message" rows="4" maxlength="8000" required><?= $escape($messageTemplate) ?></textarea>
+              <p class="field-hint">Gunakan <code>{nama}</code> untuk nama penerima dan <code>{link}</code> untuk tautan personal undangan.</p>
+              <div class="broadcast-actions">
+                <button type="submit" class="primary-button" <?= $fonnteToken === '' ? 'disabled' : '' ?>>Kirim ke tamu terpilih</button>
+              </div>
+            </form>
+          </section>
+
+          <section id="histori" class="panel-section">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">HISTORI</p>
+                <h2>Riwayat broadcast</h2>
+              </div>
+            </div>
+
+            <div class="history-list">
+              <?php if ($history === []): ?>
+                <p class="empty-guests">Belum ada histori broadcast.</p>
+              <?php else: ?>
+                <?php foreach (array_reverse($history) as $entry): ?>
+                  <article class="history-item">
+                    <div class="history-meta">
+                      <strong><?= htmlspecialchars((string) ($entry['time'] ?? 'Belum ada waktu'), ENT_QUOTES, 'UTF-8') ?></strong>
+                      <span><?= (int) ($entry['sent'] ?? 0) ?> terkirim</span>
+                    </div>
+                    <div class="history-stats">
+                      <span><?= (int) ($entry['targets'] ?? 0) ?> target</span>
+                      <span><?= (int) ($entry['failed'] ?? 0) ?> gagal</span>
+                      <span><?= (int) ($entry['skipped'] ?? 0) ?> dilewati</span>
+                    </div>
+                  </article>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </div>
+          </section>
+
+          <section id="settings" class="panel-section">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">SETTINGAN</p>
+                <h2>Konfigurasi Fonnte</h2>
+              </div>
+            </div>
+
+            <form method="post" class="settings-form">
+              <input type="hidden" name="csrf" value="<?= $csrf ?>">
+              <input type="hidden" name="action" value="save-settings">
+              <label for="fonnte-token">Token API Fonnte</label>
+              <input id="fonnte-token" name="fonnte_token" type="password" autocomplete="new-password" placeholder="<?= $fonnteToken !== '' ? 'Token tersimpan; isi hanya untuk mengganti' : 'Tempel token API Fonnte' ?>">
+              <?php if ($savedFonnteToken !== ''): ?>
+                <label class="clear-token"><input type="checkbox" name="clear_fonnte_token" value="1"> Hapus token tersimpan</label>
+              <?php endif; ?>
+              <label for="settings-message">Template pesan</label>
+              <textarea id="settings-message" name="message" rows="4" maxlength="8000" required><?= $escape($messageTemplate) ?></textarea>
+              <div class="timeline-actions">
+                <button type="submit" class="secondary-button">Simpan pengaturan</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </div>
+
       <script>
+        const sectionMenu = document.querySelector('.section-menu');
+        const menuLinks = [...sectionMenu.querySelectorAll('a')];
+        const panels = [...document.querySelectorAll('.dashboard-content > .panel-section')];
+
+        const showPanel = (hash) => {
+          const activePanel = panels.find((panel) => `#${panel.id}` === hash) ?? panels[0];
+
+          panels.forEach((panel) => {
+            panel.hidden = panel !== activePanel;
+          });
+
+          menuLinks.forEach((link) => {
+            const isActive = link.hash === `#${activePanel.id}`;
+            link.classList.toggle('active', isActive);
+            if (isActive) {
+              link.setAttribute('aria-current', 'page');
+            } else {
+              link.removeAttribute('aria-current');
+            }
+          });
+        };
+
+        menuLinks.forEach((link) => {
+          link.addEventListener('click', (event) => {
+            event.preventDefault();
+            history.pushState(null, '', link.hash);
+            showPanel(link.hash);
+          });
+        });
+
+        window.addEventListener('popstate', () => showPanel(window.location.hash));
+        showPanel(window.location.hash);
+
+        const setupPagination = (list, itemSelector, label) => {
+          if (!list) return;
+
+          const items = [...list.querySelectorAll(itemSelector)];
+          const pageSize = 10;
+          const pageCount = Math.ceil(items.length / pageSize);
+          if (pageCount <= 1) return;
+
+          let currentPage = 1;
+          const pagination = document.createElement('nav');
+          pagination.className = 'list-pagination';
+          pagination.setAttribute('aria-label', label);
+
+          const previousButton = document.createElement('button');
+          previousButton.type = 'button';
+          previousButton.textContent = 'Sebelumnya';
+
+          const pageStatus = document.createElement('span');
+          pageStatus.setAttribute('aria-live', 'polite');
+
+          const nextButton = document.createElement('button');
+          nextButton.type = 'button';
+          nextButton.textContent = 'Selanjutnya';
+
+          pagination.append(previousButton, pageStatus, nextButton);
+
+          const updatePage = () => {
+            const firstItem = (currentPage - 1) * pageSize;
+            items.forEach((item, index) => {
+              item.hidden = index < firstItem || index >= firstItem + pageSize;
+            });
+            previousButton.disabled = currentPage === 1;
+            nextButton.disabled = currentPage === pageCount;
+            pageStatus.textContent = `Halaman ${currentPage} dari ${pageCount}`;
+          };
+
+          previousButton.addEventListener('click', () => {
+            currentPage--;
+            updatePage();
+          });
+          nextButton.addEventListener('click', () => {
+            currentPage++;
+            updatePage();
+          });
+
+          list.after(pagination);
+          updatePage();
+        };
+
+        setupPagination(document.querySelector('.guest-list'), '.guest-row', 'Halaman daftar kontak');
+        setupPagination(document.querySelector('.history-list'), '.history-item', 'Halaman histori broadcast');
+
         document.getElementById('select-all')?.addEventListener('change', (event) => {
           document.querySelectorAll('.guest-select input').forEach((checkbox) => {
             checkbox.checked = event.target.checked;

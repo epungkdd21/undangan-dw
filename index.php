@@ -28,18 +28,22 @@ $escapedInviteeName = htmlspecialchars($inviteeName, ENT_QUOTES, 'UTF-8');
 <section class="opening" id="opening">
   <div class="opening-content">
     <p class="eyebrow">UNDANGAN DIGITAL</p>
-    <h1>DWIPANTARA 2026</h1>
-    <p class="opening-subtitle">50TH MILAD KYAI AMIN</p>
-    <?php if ($inviteeName !== ''): ?>
-      <p class="recipient-label">Kepada Yth.<br><strong><?= $escapedInviteeName ?></strong></p>
-    <?php endif; ?>
-
+    <div class="brand-lockup" aria-label="DWIPANTARA X Kyai Amin">
+      <img class="brand-logo" src="assets/image.png" alt="DWIPANTARA X Kyai Amin">
+    </div>
+    
     <div class="envelope-scene" id="envelopeScene">
       <!-- Ini adalah kertas yang terlihat putih di dalam amplop,
            tetapi isinya adalah halaman invitation. -->
       <div class="paper" id="paper">
         <div class="paper-sheet">
-          <img src="assets/invitation.jpeg" alt="Halaman invitation DWIPANTARA 2026">
+          <div class="invite-art">
+            <img src="assets/invitation.png" alt="Halaman invitation DWIPANTARA 2026">
+            <div class="invite-overlay">
+              <div class="invite-kicker">Bapak/Ibu/Kaka</div>
+              <div class="invite-name"><?= $escapedInviteeName !== '' ? $escapedInviteeName : 'Tamu Undangan' ?></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -53,6 +57,10 @@ $escapedInviteeName = htmlspecialchars($inviteeName, ENT_QUOTES, 'UTF-8');
            src="assets/envelope-open-paper.png"
            alt="Amplop terbuka dengan kertas">
 
+      <?php if ($inviteeName !== ''): ?>
+       <p class="recipient-label">Kepada Yth.<br><strong><?= $escapedInviteeName ?></strong></p>
+      <?php endif; ?>
+
       <button class="envelope-button" id="envelopeButton" aria-label="Buka undangan"></button>
     </div>
 
@@ -61,12 +69,18 @@ $escapedInviteeName = htmlspecialchars($inviteeName, ENT_QUOTES, 'UTF-8');
 </section>
 
 <main class="invitation" id="invitation">
-  <!-- Urutan halaman: invitation terlebih dahulu, kemudian info -->
+  <!-- Urutan halaman: invitation terlebih dahulu, kemudian info 
   <?php if ($inviteeName !== ''): ?>
     <p class="recipient-banner">Undangan khusus untuk <strong><?= $escapedInviteeName ?></strong></p>
-  <?php endif; ?>
+  <?php endif; ?>-->
   <section class="invite-page">
-    <img src="assets/invitation.jpeg" alt="Invitation DWIPANTARA 2026">
+    <div class="invite-art invite-art-full">
+      <img src="assets/invitation.png" alt="Invitation DWIPANTARA 2026">
+      <div class="invite-overlay">
+        <div class="invite-logo">Bapak/Ibu/Kaka</div>
+        <div class="invite-name"><?= $escapedInviteeName !== '' ? $escapedInviteeName : 'Tamu Undangan' ?></div>
+      </div>
+    </div>
   </section>
 
   <section class="invite-page">
