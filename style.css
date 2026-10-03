@@ -1,0 +1,133 @@
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{min-height:100vh;overflow-x:hidden;background:#e9e5d8;color:#2f342c;font-family:Georgia,"Times New Roman",serif}
+
+/* ===================== OPENING ===================== */
+.opening{position:fixed;inset:0;z-index:100;display:grid;place-items:center;min-height:100svh;overflow:hidden;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.96),rgba(233,229,216,.98) 68%),#e9e5d8;transition:opacity .75s ease,visibility .75s ease}
+.opening.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+.opening-content{position:relative;z-index:2;width:min(94vw,680px);text-align:center}
+.eyebrow{font-size:.72rem;letter-spacing:.32em;opacity:.65;margin-bottom:12px}
+.opening h1{font-size:clamp(2rem,6vw,4rem);letter-spacing:.12em;font-weight:600;color:#3e4938}
+.opening-subtitle{margin-top:8px;font-size:clamp(.8rem,2vw,1rem);letter-spacing:.22em;color:#75663e}
+
+/* Square stage because the new transparent open-envelope asset is square. */
+.envelope-scene{position:relative;width:min(62vw,440px);aspect-ratio:1/1;margin:30px auto 16px;perspective:1400px}
+
+.envelope{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .45s ease,transform .6s ease}
+.envelope-open-paper{z-index:2;opacity:0;pointer-events:none}
+.envelope-closed{z-index:3}
+
+.envelope-button{position:absolute;inset:0;z-index:10;width:100%;height:100%;border:0;background:transparent;cursor:pointer;padding:0}
+.envelope-button:focus-visible{outline:3px solid rgba(94,105,68,.55);outline-offset:5px}
+
+/* The invitation page sits exactly over the blank white card in the reference image. */
+.paper{position:absolute;z-index:6;left:22.1%;top:29.2%;width:55.3%;height:39%;opacity:0;transform:translateY(0) scale(.99);transform-origin:50% 100%;transition:opacity .22s ease,transform 1.05s cubic-bezier(.16,.9,.18,1),left 1.15s cubic-bezier(.16,.9,.18,1),top 1.15s cubic-bezier(.16,.9,.18,1),width 1.15s cubic-bezier(.16,.9,.18,1),height 1.15s cubic-bezier(.16,.9,.18,1)}
+.paper-sheet{width:100%;height:100%;overflow:hidden;background:#fffdf8;box-shadow:0 9px 24px rgba(47,39,25,.18)}
+.paper-sheet img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+
+/* Click: swap to the transparent open-envelope asset. */
+.envelope-scene.opening-envelope .envelope-closed{opacity:0;transform:scale(.99)}
+.envelope-scene.opening-envelope .envelope-open-paper{opacity:1}
+
+/* The invitation jumps out of the envelope instead of appearing behind it. */
+.envelope-scene.paper-emerging .paper{opacity:1;transform:translateY(-112%) scale(1.05)}
+.envelope-scene.paper-emerging .envelope-open-paper{opacity:1}
+
+/* Then the same physical sheet flies toward the viewer and fills the screen. */
+.envelope-scene.paper-fullscreen{position:fixed;inset:0;z-index:120;width:100vw;height:100svh;margin:0;perspective:none;pointer-events:none}
+.envelope-scene.paper-fullscreen .paper{left:50%;top:50%;width:100vw;height:100svh;transform:translate(-50%,-50%) scale(1);opacity:1}
+.envelope-scene.paper-fullscreen .paper-sheet{border-radius:0;box-shadow:none}
+.envelope-scene.paper-fullscreen .paper-sheet img{object-fit:cover}
+.envelope-scene.paper-fullscreen .envelope-open-paper{opacity:0}
+
+.tap-text{font-size:.75rem;letter-spacing:.22em;color:#655b48;transition:opacity .3s ease}
+.envelope-scene.opening-envelope~.tap-text{opacity:0}
+
+/* ===================== INVITATION ===================== */
+.invitation{min-height:100vh;opacity:0;visibility:hidden;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease,visibility .7s ease}
+.invitation.visible{opacity:1;visibility:visible;transform:translateY(0)}
+.invite-page{width:100%;background:#f1f0e9;overflow:hidden}
+.invite-page img{display:block;width:100%;height:auto}
+.invite-footer{min-height:100px;display:grid;place-items:center;background:#e7e3d5}
+#backToTop{border:1px solid rgba(70,70,50,.35);background:rgba(255,255,255,.45);color:#3f4738;padding:12px 22px;border-radius:999px;cursor:pointer;letter-spacing:.08em}
+
+.recipient-label{margin:18px auto 0;font-size:.88rem;line-height:1.7;color:#655b48}
+.recipient-label strong{font-size:1.08rem;color:#3e4938}
+.recipient-banner{padding:24px 16px;text-align:center;background:#f7f5ed;color:#655b48;font-size:1rem}
+.recipient-banner strong{color:#3e4938}
+
+/* ===================== DASHBOARD ===================== */
+.dashboard-body{min-height:100vh;background:#f3f2ec;color:#30372e;font-family:"Trebuchet MS",sans-serif}
+.dashboard-header{min-height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 max(24px,calc((100vw - 1040px)/2));background:#3e4938;color:#fff}
+.dashboard-brand{color:#fff;text-decoration:none;font-family:Georgia,"Times New Roman",serif;font-size:1.2rem;letter-spacing:.08em}
+.dashboard-brand span{color:#d4c89d}
+.logout-form button,.login-form button,.add-guest-controls button,.save-guest{border:0;background:#556447;color:#fff;padding:11px 16px;font:inherit;cursor:pointer}
+.logout-form button{border:1px solid rgba(255,255,255,.45);background:transparent}
+.dashboard-main{width:min(100% - 40px,1040px);margin:56px auto 90px}
+.dashboard-title-row{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:30px}
+.dashboard-kicker{margin-bottom:9px;color:#8b7950;font-size:.72rem;font-weight:bold;letter-spacing:.16em}
+.dashboard-main h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.8rem,4vw,2.5rem);font-weight:normal;color:#3e4938}
+.guest-count{padding-bottom:5px;color:#666b5e;font-size:.9rem}
+.guest-count strong{color:#3e4938;font-size:1.3rem}
+.add-guest-form{padding:22px 0;border-block:1px solid #d9d8ce}
+.add-guest-form>label,.login-form label{display:block;margin-bottom:9px;font-size:.86rem;font-weight:bold}
+.add-guest-controls{display:flex;gap:10px}
+.add-guest-controls input,.edit-guest-form input,.login-form input{width:100%;min-width:0;padding:12px 13px;border:1px solid #cbcbbf;border-radius:2px;background:#fff;color:#30372e;font:inherit}
+.add-guest-controls button{white-space:nowrap}
+.broadcast-panel{margin:30px 0 22px;padding:23px 0;border-bottom:1px solid #d9d8ce}
+.broadcast-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.broadcast-heading h2{font-family:Georgia,"Times New Roman",serif;font-size:1.45rem;font-weight:normal;color:#3e4938}
+.fonnte-status{padding:7px 10px;background:#eee8dc;color:#78633d;font-size:.78rem}
+.fonnte-status.is-configured{background:#e5eadf;color:#3e4938}
+.broadcast-form>label{display:block;margin:14px 0 8px;font-size:.86rem;font-weight:bold}
+.broadcast-form textarea,.broadcast-form>input[type=password]{width:100%;padding:12px 13px;border:1px solid #cbcbbf;border-radius:2px;background:#fff;color:#30372e;font:inherit;line-height:1.55}
+.broadcast-form textarea{resize:vertical}
+.field-hint{margin-top:7px;color:#73766b;font-size:.82rem;line-height:1.5}
+.field-hint code{color:#3e4938}
+.clear-token{display:flex;align-items:center;gap:8px;margin-top:10px;color:#793f31;font-size:.82rem}
+.broadcast-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:17px}
+.broadcast-actions button{padding:11px 15px;border:1px solid #556447;font:inherit;cursor:pointer}
+.primary-button{background:#556447;color:#fff}
+.primary-button:disabled{border-color:#a9ab9f;background:#a9ab9f;cursor:not-allowed}
+.secondary-button{background:transparent;color:#3e4938}
+.guest-list{margin-top:8px}
+.select-all{display:flex;align-items:center;gap:8px;padding:10px 0;color:#60665a;font-size:.84rem}
+.guest-row{display:grid;grid-template-columns:auto minmax(300px,1.2fr) minmax(170px,.75fr) auto;align-items:center;gap:16px;padding:17px 0;border-bottom:1px solid #deddd4}
+.guest-select{display:grid;place-items:center}
+.guest-select input,.select-all input,.clear-token input{width:16px;height:16px;accent-color:#556447}
+.edit-guest-form{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(110px,.8fr) auto;gap:8px;min-width:0}
+.save-guest{padding-inline:13px}
+.guest-link{overflow-wrap:anywhere;color:#6b765b;font-size:.84rem;text-decoration:none}
+.guest-link:hover{text-decoration:underline}
+.delete-guest-form button{border:0;background:transparent;color:#8b5145;font:inherit;cursor:pointer}
+.empty-guests{padding:24px 0;color:#73766b}
+.dashboard-notice,.form-error{margin:0 0 18px;padding:12px 15px;background:#e5eadf;color:#3e4938;font-size:.9rem}
+.form-error{background:#f3e5df;color:#793f31}
+.dashboard-message{max-width:600px;margin:80px auto;padding:36px;background:#fff;border-top:3px solid #a89a6c}
+.dashboard-message>p:not(.dashboard-kicker){margin-top:14px;line-height:1.6;color:#62665c}
+.dashboard-message code{padding:2px 5px;background:#f0efe9;color:#3e4938}
+.login-panel{max-width:440px}
+.login-form{margin-top:24px}
+.login-form input{margin-bottom:14px}
+.login-form button{width:100%}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+@media(max-width:600px){
+  .opening-content{width:95vw}
+  .opening h1{letter-spacing:.08em}
+  .envelope-scene{width:min(82vw,390px);margin-top:25px}
+  .tap-text{font-size:.64rem;letter-spacing:.15em}
+  .dashboard-header{min-height:64px;padding:0 18px}
+  .dashboard-main{width:calc(100% - 36px);margin-top:34px}
+  .dashboard-title-row{align-items:start;flex-direction:column;gap:8px;margin-bottom:22px}
+  .add-guest-controls{flex-direction:column}
+  .broadcast-heading{align-items:start;flex-direction:column}
+  .broadcast-actions{align-items:stretch;flex-direction:column}
+  .guest-row{grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:15px 0}
+  .guest-select{grid-column:1;grid-row:1}
+  .edit-guest-form{grid-column:2/-1;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);}
+  .edit-guest-form .save-guest{grid-column:1/-1}
+  .guest-link{grid-column:2}
+  .delete-guest-form{grid-column:3;grid-row:2}
+  .dashboard-message{margin:48px auto;padding:26px 22px}
+}
