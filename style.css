@@ -140,14 +140,15 @@ body{min-height:100vh;overflow-x:hidden;background:#e9e5d8;color:#2f342c;font-fa
 .section-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
 .section-header h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.3rem,2vw,1.8rem);font-weight:normal;color:#3e4938}
 .add-guest-form{padding:18px 0;border-top:1px solid #ece5d6;border-bottom:1px solid #ece5d6}
-.add-guest-form>label,.login-form label,.settings-form label,.broadcast-form label{display:block;margin-bottom:9px;font-size:.86rem;font-weight:bold;color:#3a3d34}
+.add-guest-form>label,.login-form label,.settings-form label,.account-form label,.broadcast-form label{display:block;margin-bottom:9px;font-size:.86rem;font-weight:bold;color:#3a3d34}
 .add-guest-controls{display:flex;gap:10px}
-.add-guest-controls input,.edit-guest-form input,.login-form input,.settings-form input,.settings-form textarea,.broadcast-form textarea,.broadcast-form input{width:100%;min-width:0;padding:12px 13px;border:1px solid #cbcbbf;border-radius:12px;background:#fff;color:#30372e;font:inherit}
+.add-guest-controls input,.edit-guest-form input,.login-form input,.settings-form input,.settings-form textarea,.account-form input,.broadcast-form textarea,.broadcast-form input{width:100%;min-width:0;padding:12px 13px;border:1px solid #cbcbbf;border-radius:12px;background:#fff;color:#30372e;font:inherit}
 .add-guest-controls button,.primary-button,.secondary-button,.save-guest{white-space:nowrap;border-radius:12px;padding:11px 16px;font:inherit;cursor:pointer}
 .add-guest-controls button,.primary-button{background:#556447;color:#fff;border:1px solid #556447}
 .primary-button:disabled{border-color:#a9ab9f;background:#a9ab9f;cursor:not-allowed}
 .secondary-button,.save-guest{background:#f0ead9;color:#3e4938;border:1px solid #d6caa5}
-.broadcast-form,.settings-form{display:flex;flex-direction:column;gap:14px}
+.broadcast-form,.settings-form,.account-form{display:flex;flex-direction:column;gap:14px}
+.account-section-header{margin-top:30px;padding-top:24px;border-top:1px solid #ece5d6}
 .broadcast-form textarea,.settings-form textarea{resize:vertical;min-height:120px}
 .field-hint{margin-top:-4px;color:#73766b;font-size:.82rem;line-height:1.5}
 .field-hint code{color:#3e4938}
@@ -189,8 +190,23 @@ body{min-height:100vh;overflow-x:hidden;background:#e9e5d8;color:#2f342c;font-fa
 .login-form input{margin-bottom:4px}
 .login-form button{width:100%}
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.search-guests{display:flex;flex-direction:column;gap:8px;max-width:440px;color:#3a3d34;font-size:.86rem;font-weight:700}
+.search-guests input{width:100%;padding:12px 13px;border:1px solid #cbcbbf;border-radius:12px;background:#fff;color:#30372e;font:inherit}
+.guest-search-status{min-height:1.2em;margin:8px 0;color:#73766b;font-size:.82rem}
+.configuration-warning{color:#793f31}
+.guest-row:focus-within,.panel-section:focus-visible{outline:3px solid rgba(85,100,71,.35);outline-offset:3px}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #9c8b54;outline-offset:2px}
+.section-menu a,.primary-button,.secondary-button,.save-guest,.add-guest-controls button{transition:background-color .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}
+.section-menu a:hover,.primary-button:hover:not(:disabled),.secondary-button:hover,.save-guest:hover,.add-guest-controls button:hover{transform:translateY(-1px)}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
 
 @media(max-width:600px){
+  .dashboard-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .stat-card{padding:16px 14px}
+  .panel-section{padding:18px}
   .opening-content{width:95vw}
   .opening h1{letter-spacing:.08em}
   .envelope-scene{width:min(82vw,390px,42svh);margin:-12px auto 12px;transform:translateY(-10px)}

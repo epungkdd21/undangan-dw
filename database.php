@@ -13,6 +13,18 @@ function saveAppSetting(PDO $database, string $key, string $value): bool
   }
 }
 
+function sendAppSecurityHeaders(bool $noStore = false): void
+{
+  header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+  header('X-Content-Type-Options: nosniff');
+  header('X-Frame-Options: DENY');
+  header('Referrer-Policy: no-referrer');
+  header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+  if ($noStore) {
+    header('Cache-Control: no-store, private');
+  }
+}
+
 function appDatabase(): PDO
 {
   static $database = null;

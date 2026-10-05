@@ -1,0 +1,61 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS pengguna (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	nama TEXT NOT NULL,
+	email TEXT NOT NULL UNIQUE,
+	kata_sandi_hash TEXT NOT NULL,
+	dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS undangan (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	pengguna_id INTEGER NOT NULL,
+	slug TEXT NOT NULL UNIQUE,
+	nama_acara TEXT NOT NULL,
+	nama_mempelai TEXT,
+	tanggal_acara TEXT,
+	lokasi TEXT,
+	alamat TEXT,
+	pesan TEXT,
+	status TEXT NOT NULL DEFAULT 'draft'
+		CHECK (status IN ('draft', 'terbit', 'arsip')),
+	dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (pengguna_id) REFERENCES pengguna(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tamu (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	undangan_id INTEGER NOT NULL,
+	nama TEXT NOT NULL,
+	email TEXT,
+	nomor_telepon TEXT,
+	token TEXT NOT NULL UNIQUE,
+	dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (undangan_id) REFERENCES undangan(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS rsvp (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	tamu_id INTEGER NOT NULL UNIQUE,
+	kehadiran TEXT NOT NULL DEFAULT 'belum_menjawab'
+		CHECK (kehadiran IN ('hadir', 'tidak_hadir', 'belum_menjawab')),
+	jumlah_hadir INTEGER NOT NULL DEFAULT 0 CHECK (jumlah_hadir >= 0),
+	diperbarui_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (tamu_id) REFERENCES tamu(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ucapan (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	undangan_id INTEGER NOT NULL,
+	tamu_id INTEGER,
+	nama_pengirim TEXT NOT NULL,
+	isi TEXT NOT NULL,
+	dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (undangan_id) REFERENCES undangan(id) ON DELETE CASCADE,
+	FOREIGN KEY (tamu_id) REFERENCES tamu(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_undangan_pengguna_id ON undangan(pengguna_id);
+CREATE INDEX IF NOT EXISTS idx_tamu_undangan_id ON tamu(undangan_id);
+CREATE INDEX IF NOT EXISTS idx_ucapan_undangan_id ON ucapan(undangan_id);

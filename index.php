@@ -2,6 +2,7 @@
 $inviteeName = '';
 $inviteeId = $_GET['to'] ?? '';
 require_once __DIR__ . '/database.php';
+sendAppSecurityHeaders(true);
 $database = appDatabase();
 
 if (is_string($inviteeId) && $inviteeId !== '') {

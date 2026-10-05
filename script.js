@@ -10,6 +10,13 @@ function openInvitation() {
   if (opened) return;
   opened = true;
 
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    invitation.classList.add("visible");
+    opening.classList.add("is-hidden");
+    window.scrollTo({ top: 0, behavior: "auto" });
+    return;
+  }
+
   // 1. Amplop terbuka, menampilkan kertas putih dari dalam.
   envelopeScene.classList.add("opening-envelope");
 
